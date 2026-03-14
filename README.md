@@ -268,65 +268,131 @@ Validate     Transaction        DB + Publish
 
 ---
 
+## Kurulum
+
+Bu repo'yu klonla ve AI asistanınla aynı workspace'te aç:
+
+```bash
+git clone https://github.com/your-org/repo-knowledge
+# Claude Code veya VS Code ile aç
+```
+
+Başka bir şey kurman gerekmez — agent ve skill dosyaları `.rk/` klasöründe hazır.
+
+---
+
+## Ön Gereklilikler — MCP Sunucuları
+
+Repo kaynak koduna erişmek için AI asistanının aşağıdaki MCP sunucularından en az birine bağlı olması gerekir:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                    ZORUNLU MCP ARAÇLARI                    │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  GitLab MCP          →  GitLab repo erişimi                │
+│  (gitlab-org/gitlab  │  Branch, dosya, klasör ağacı        │
+│   MCP server)        │                                     │
+│                                                            │
+│  Azure DevOps MCP    →  Azure DevOps repo erişimi          │
+│  (microsoft/azure-   │  Repo, pipeline, artifact           │
+│   devops-mcp)        │                                     │
+│                                                            │
+│  Filesystem MCP      →  kb/ klasörüne yaz/oku              │
+│  (built-in veya      │  Knowledge base JSON'ları           │
+│   @modelcontextprot  │                                     │
+│   ocol/server-fs)    │                                     │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Sadece public GitHub repo'ları için** ek MCP gerekmez — Claude doğrudan web fetch ile erişebilir.
+
+### Claude Code için MCP kurulumu (örnek)
+
+```bash
+# GitLab MCP
+claude mcp add gitlab -- npx -y @modelcontextprotocol/server-gitlab
+
+# Azure DevOps MCP
+claude mcp add azure-devops -- npx -y @microsoft/azure-devops-mcp
+
+# Filesystem MCP (kb/ klasörü için)
+claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/repo-knowledge/kb
+```
+
+---
+
+## Nasıl Kullanılır
+
+### Claude Code (Slash Commands)
+
+```bash
+# Repo tara
+/rk-scan https://gitlab.com/org/order-api
+
+# Ecosystem haritası oluştur
+/rk-map
+
+# Geliştirici sorusu sor
+/rk-advise "UserService değişirse ne etkilenir?"
+```
+
+### GitHub Copilot (VS Code)
+
+`.github/copilot-instructions.md` otomatik yüklenir. Direkt yaz:
+
+```
+@workspace şu repo'yu tara: https://gitlab.com/org/order-api
+```
+
+```
+@workspace UserService değiştirirsem ne etkilenir?
+```
+
+### Doğal Dil (her AI asistan)
+
+```
+"şu repo'yu tara: https://gitlab.com/org/order-api"
+"Hangi repo hangisini kullanıyor?"
+"POST /api/orders endpoint'i nasıl çalışıyor?"
+```
+
+CLAUDE.md ve .github/copilot-instructions.md routing kurallarını barındırır — AI hangi agent'ı çağıracağını otomatik bilir.
+
+---
+
 ## Klasör Yapısı
 
 ```
 repo-knowledge/
 │
-├── 📄 CLAUDE.md                 ← Agent ana yönergesi (4 fazlı tarama protokolü)
+├── 📄 CLAUDE.md                    ← Claude Code giriş noktası + routing
+├── 📄 .github/copilot-instructions.md  ← GitHub Copilot giriş noktası
 │
-├── 📁 docs/
-│   ├── 📄 scan-java.md          ← Java/Spring Boot derinlemesine tarama rehberi
-│   └── 📄 scan-dotnet.md        ← .NET/ASP.NET Core derinlemesine tarama rehberi
+├── 📁 .rk/                         ← Tüm agent ve skill'ler (single source)
+│   ├── 📁 agents/
+│   │   ├── 📄 repo-scanner.agent.md    ← 4 fazlı tarama protokolü
+│   │   ├── 📄 ecosystem-mapper.agent.md ← Multi-repo bağımlılık haritası
+│   │   └── 📄 dev-advisor.agent.md     ← Geliştirici soru/etki analizi
+│   └── 📁 skills/
+│       ├── 📁 scan-java/SKILL.md       ← Java/Spring Boot derin tarama
+│       └── 📁 scan-dotnet/SKILL.md     ← .NET/ASP.NET Core derin tarama
 │
-└── 📁 kb/                       ← Oluşturulan knowledge base'ler
-    ├── 📄 _progress.json        ← Tarama ilerleme takibi (context sıfırlansa bile devam)
-    ├── 📄 _index.json           ← Monorepo / multi-repo genel index
-    ├── 📄 order-api.json        ← Taranmış repo #1
-    ├── 📄 user-service.json     ← Taranmış repo #2
-    └── 📄 payment-service.json  ← Taranmış repo #3
+├── 📁 .claude/commands/            ← Claude Code slash komutları
+│   ├── 📄 rk-scan.md               ← /rk-scan
+│   ├── 📄 rk-map.md                ← /rk-map
+│   └── 📄 rk-advise.md             ← /rk-advise
+│
+└── 📁 kb/                          ← Oluşturulan knowledge base'ler
+    ├── 📄 _progress.json           ← Tarama ilerleme takibi
+    ├── 📄 _index.json              ← Multi-repo genel index
+    ├── 📄 order-api.json           ← Taranmış repo #1
+    └── 📄 payment-service.json     ← Taranmış repo #2
 ```
 
 ---
 
-## Tetikleyiciler
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  TARA                                                   │
-│  ─────                                                  │
-│  "şu repo'yu tara: https://gitlab.com/org/order-api"   │
-│  "azure'daki payment-service'i tara"                   │
-│                          │                              │
-│                          ▼                              │
-│              4 Fazlı Tarama Başlar                      │
-│              kb/order-api.json oluşur                   │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│  ANALİZ                                                 │
-│  ──────                                                 │
-│  "Kullanıcıya yeni bir adres eklemek istiyorum"         │
-│  "POST /api/invoices endpoint'i nasıl çalışıyor?"      │
-│  "OrderService'i değiştirirsem ne etkilenir?"          │
-│                          │                              │
-│                          ▼                              │
-│         kb/ klasörü okunur → Tam rehber verilir         │
-│         Dosya yolları + Etki analizi + Tuzaklar         │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│  DEVAM ET                                               │
-│  ─────────                                              │
-│  "kaldığın yerden devam et"                             │
-│                          │                              │
-│                          ▼                              │
-│       kb/_progress.json okunur → Kaldığı yerden         │
-│       context sıfırlansa bile devam eder                │
-└─────────────────────────────────────────────────────────┘
-```
-
----
 
 ## Analiz Çıktısı — Örnek
 
@@ -379,24 +445,6 @@ Kullanıcı: "Order API'ye fatura oluşturma endpoint'i eklemek istiyorum"
 
 ---
 
-## Bağlantı Gereksinimleri
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     MCP ARAÇLARI                        │
-│                                                         │
-│   gitlab MCP ──────────────▶  GitLab repo erişimi      │
-│                              Branch, dosya, ağaç        │
-│                                                         │
-│   azure-devops MCP ────────▶  Azure DevOps erişimi     │
-│                              Repo, pipeline, artifact   │
-│                                                         │
-│   filesystem MCP ──────────▶  kb/ klasörüne yaz/oku    │
-│                              JSON knowledge base        │
-└─────────────────────────────────────────────────────────┘
-```
-
----
 
 ## Tarama Tamamlandığında
 
