@@ -1,3 +1,5 @@
+<skill id="scan-dotnet" name=".NET Repo Tarama" version="1.0">
+
 # .NET Repo Tarama — AŞAMA 2 ve AŞAMA 3
 
 Bu dosya **yalnızca .NET / ASP.NET Core repoları** için geçerlidir.
@@ -976,6 +978,57 @@ kb/
 
 ---
 
+## AŞAMA 4 — KB'ye Yaz (Incremental)
+
+> **Write tool büyük JSON'larda max_tokens'a takılır. Her bölümü tararken anında kaydet.**
+
+### Zorunlu Kayıt Pattern'i
+
+Her tarama alt-bölümü tamamlandığında bu Python snippet'ini çalıştır:
+
+```python
+import json, os
+path = 'kb/{repo-adi}.json'
+data = json.load(open(path)) if os.path.exists(path) else {}
+data['{bolum_adi}'] = [...]   # sadece bu bölümü güncelle
+with open(path, 'w') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+print(f"✅ {'{bolum_adi}'} kaydedildi")
+```
+
+### Kayıt Sırası
+
+```
+1.  meta + repo             → Aşama 1 biter bitmez (dosyayı ilk kez oluştur)
+2.  api_endpointleri        → 2.1 Controller taraması biter bitmez
+3.  servisler               → 2.2 Service/Handler taraması biter bitmez
+4.  domain_modelleri        → 2.3 Entity/DbContext taraması biter bitmez
+5.  repository_katalogu     → 2.4 Repository taraması biter bitmez
+6.  bagimlilik_grafigi      → 2.5 Bağımlılık analizi biter bitmez
+7.  dto_semalari            → 3.1 DTO/Request taraması biter bitmez
+8.  enum_katalog            → 3.2 Enum taraması biter bitmez
+9.  guvenlik_haritasi       → 3.4 Güvenlik taraması biter bitmez
+10. hata_yonetimi           → 3.5 Exception handler biter bitmez
+11. olay_semalari           → 3.7 Mesaj taraması biter bitmez
+12. migration_durumu        → 3.8 Migration taraması biter bitmez
+13. test_durumu             → 3.9 Test taraması biter bitmez
+14. harici_client_katalogu  → 3.10 HttpClient taraması biter bitmez
+15. teknik_borc             → 3.12 Teknik borç taraması biter bitmez
+16. execution_flows         → 3.13 Flow analizi biter bitmez
+17. performance_riskleri    → 3.14 Performance taraması biter bitmez
+18. guvenlik_riskleri       → 3.15 Security risk taraması biter bitmez
+19. config_drift            → 3.16 Config karşılaştırma biter bitmez
+20. kompleksite_skoru + ozet → En son
+```
+
+### Doğrulama (her kayıt sonrası)
+
+```bash
+python3 -m json.tool kb/{repo-adi}.json > /dev/null && echo "✅ Geçerli" || echo "❌ JSON hatalı"
+```
+
+---
+
 ## .NET'e Özel: Yeni Özellik Eklerken
 
 ### Tipik Dosya Sırası
@@ -1012,3 +1065,12 @@ kb/
 - **Feature flag prod'da açık mı?** `appsettings.Production.json`'da `FeatureFlags` section'ını dev ile karşılaştır
 - **Swagger Production'da kapalı mı?** `if (env.IsDevelopment())` bloğu dışında `app.UseSwagger()` var mı kontrol et
 - **`[AllowAnonymous]` audit:** Tüm `[AllowAnonymous]` endpoint'lerinin listesini güvenlik haritasına ekle — state değiştiriyorsa özellikle işaretle
+
+<rules>
+  <r>Repo kaynak koduna erişmek için mevcut araçlarını kullan — GitLab API, Azure DevOps API veya platforma özgü eklenti</r>
+  <r>kb/ klasörüne yazmak için mevcut dosya sistemi araçlarını kullan</r>
+  <r>Emin olmadığında null yaz — yanlış bilgi doğru bilgisizlikten tehlikelidir</r>
+  <r>Her bölüm tamamlandığında derhal kaydet (incremental write)</r>
+</rules>
+
+</skill>
